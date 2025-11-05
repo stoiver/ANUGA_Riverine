@@ -209,7 +209,7 @@ import anuga
 from anuga import Set_stage, Reflective_boundary
 from anuga.structures.inlet_operator import Inlet_operator
 
-from utils.anuga_tools.baptist_operator import Baptist_operator
+#from utils.anuga_tools.baptist_operator import Baptist_operator
 from utils.anuga_tools import anuga_tools as at
 from utils import data_processing_tools as dpt
 
@@ -231,11 +231,11 @@ for d in [model_inputs_dir, model_outputs_dir, model_visuals_dir, model_validati
     Path(d).mkdir(parents=True, exist_ok=True)
         
 # Install custom anuga modules
-f_py_install = os.path.join(workshop_dir, 'utils/anuga_tools/install.py')
+#f_py_install = os.path.join(workshop_dir, 'utils/anuga_tools/install.py')
 #get_ipython().system('python $f_py_install')
 
 import subprocess, sys
-subprocess.check_call([sys.executable, f_py_install])
+#subprocess.check_call([sys.executable, f_py_install])
 
 # Check if the user operating system is windows (useful )
 is_windows = sys.platform.startswith('win')
@@ -1087,6 +1087,7 @@ finaltime = (sim_time.shape[0]-1)*timestep
 total_number_of_steps = sim_time.shape[0]
 for n, t in tqdm(enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)), 
                           total=total_number_of_steps):
+#for n, t in enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)):
     
     # Update discharge value at the inlet
     inlet_ATC.Q = discharge_function(t)
@@ -1094,10 +1095,11 @@ for n, t in tqdm(enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime
     # Optional, report volume conservation at some intervals
     if n % 2 == 0:
         print(f"\nTime = {t:.2f} s (step {n})")
+        domain.print_timestepping_statistics()
         domain.report_water_volume_statistics()
 
         # Check for negative depths
-        shallow = domain.quantities['stage'].vertex_values - domain.quantities['elevation'].vertex_values
+        shallow = domain.quantities['stage'].centroid_values - domain.quantities['elevation'].centroid_values
         if (shallow < 0).any():
             print("Warning: Negative water depths detected.")
 

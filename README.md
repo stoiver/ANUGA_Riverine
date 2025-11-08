@@ -5,8 +5,11 @@ The inputs such as terrain file as .tif, boundary line files .shp, unstructured 
 The data for Inlet operator (Discharge) and downstream boundary condition (time-varying water level) are in directory named "model_inputs" inside inside working directory
 
 Mesher: UnStructuredMesh (USM) Generator
+========================================
+
 ANUGA model is paired with a mesh generation package "Mesher" <https://github.com/Chrismarsh/mesher>.
 #Installation of Mesher package in wsl
+```
 sudo apt-get update
 sudo apt-get install -y build-essential  # nice-to-have for compiling things
 
@@ -16,8 +19,7 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O mi
 bash miniconda.sh
 ###Reload your shell so conda works###
 source ~/.bashrc
-
-#add conda-forge & use strict priority (once)
+# add conda-forge & use strict priority (once)
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
@@ -27,6 +29,7 @@ conda activate mesher_env
 
 #install Mesher (pulls GDAL/VTK etc.)
 conda install mesher -y
+```
 
 #Use of Mesher for USM generation
 Generated mesh is utilized inside 'anuga_Domain' function utilizing its points (lat/lon) and tri nodes to build domain and interpolate the DEM elevation to the triangles.

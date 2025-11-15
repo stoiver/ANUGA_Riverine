@@ -35,4 +35,4 @@ Generated mesh is utilized inside 'anuga_Domain' function utilizing its points (
 export HEADLESS=1
 export ANUGA_PARALLEL=openmpi
 export OMP_NUM_THREADS=1 
-mpirun -n 4 python MTI_Modeling.py
+mpirun -np 4 python MTI_Modeling.py

@@ -22,7 +22,6 @@ if HEADLESS:
 import cmocean
 import shutil
 from pathlib import Path
-from tqdm import tqdm
 from utils import data_processing_tools as dpt
 import anuga
 from anuga import myid
@@ -206,7 +205,6 @@ if ISROOT:  # only rank 0 writes files
 
 
 from dataretrieval import nwis
-from tqdm import notebook 
 import matplotlib
 import anuga
 from anuga import Set_stage, Reflective_boundary
@@ -960,77 +958,74 @@ if n_outlet == 0:
 # In[35]:
 
 # In[36]:
-
 from collections import defaultdict
+import traceback
 import anuga
 from anuga import distribute, myid, numprocs
 
 MYID, NUMPROCS = anuga.myid, anuga.numprocs
 
-# 1) Use the boundary_map you already built
-#    boundary_map: {(tri_id, edge): "inlet"/"outlet"/"exterior"}
+# ----------------------------------------------------------------------
+# 1) SERIAL domain setup (on rank 0)
+# ----------------------------------------------------------------------
 
-# Attach this map to the (serial) domain
+# boundary_map: {(tri_id, edge): "inlet"/"outlet"/"exterior"}
+# Attach tags to the serial domain
 domain.boundary = boundary_map
 
-# 2) Create boundary condition objects for all tag names in boundary_map
+# Inspect tags from boundary_map
+existing_tags = sorted(set(boundary_map.values()))
+if MYID == 0:
+    print("Existing boundary tags on serial domain:", existing_tags)
+
+# Create boundary condition objects on the SERIAL domain
 Bc = {}
 
-# Outlet: static transmissive (your “static BC trial”)
-if "outlet" in set(boundary_map.values()):
-    Bc["outlet"] = anuga.Transmissive_stage_zero_momentum_boundary(domain)
+# Outlet: static transmissive
+if 'outlet' in existing_tags:
+    Bc['outlet'] = anuga.Transmissive_stage_zero_momentum_boundary(domain)
 
-# Inlet: reflective (since flow is injected via Inlet_operator)
-if "inlet" in set(boundary_map.values()):
-    Bc["inlet"] = anuga.Reflective_boundary(domain)
+# Inlet: reflective (flow is injected via Inlet_operator)
+if 'inlet' in existing_tags:
+    Bc['inlet'] = anuga.Reflective_boundary(domain)
 
-# Exterior: reflective side walls
-if "exterior" in set(boundary_map.values()):
-    Bc["exterior"] = anuga.Reflective_boundary(domain)
+# Exterior: reflective
+if 'exterior' in existing_tags:
+    Bc['exterior'] = anuga.Reflective_boundary(domain)
 
-# 3) Bind BC objects to tags BEFORE distributing
+# IMPORTANT: bind ALL tags here on the serial domain
 domain.set_boundary(Bc)
 
-existing_tags = sorted(set(domain.boundary.values()))
-print("Existing boundary tags on domain:", existing_tags)
-
-# Initial water level
+# Initial conditions & parameters on the SERIAL domain
 domain.set_quantity('elevation', Zv, location='vertices')
-domain.set_quantity('stage', expression='elevation')
+domain.set_quantity('stage', expression='elevation + 0.1')
+domain.set_quantity('friction', 0.03, location='centroids')   # Manning n
 
-# Manning's n – set once here
-domain.set_quantity('friction', 0.03, location='centroids')
-
-# Other numerical settings
-domain.set_starttime(0)
+domain.set_starttime(0.0)
 domain.set_flow_algorithm('DE1')
 domain.set_name(model_name)
 domain.set_low_froude(1)
 domain.set_minimum_allowed_height(0.1)
 
-# ✨ IMPORTANT: only rank 0 should keep the serial domain before distribute()
+# Only rank 0 keeps the serial domain object before distribute()
 if MYID != 0:
     domain = None
 
-# 4) NOW it's safe to distribute
+# ----------------------------------------------------------------------
+# 2) Distribute domain across MPI ranks
+# ----------------------------------------------------------------------
 if NUMPROCS > 1:
-    print(f"Distributing domain across {NUMPROCS} processes...")
-    domain = distribute(domain)   # rank 0 sends, others receive
+    if MYID == 0:
+        print(f"Distributing domain across {NUMPROCS} processes...")
+    domain = distribute(domain)   # ANUGA clones boundary conditions internally
 else:
-    print("Running in serial (NUMPROCS = 1).")
+    if MYID == 0:
+        print("Running in serial (NUMPROCS = 1).")
 
-print("Boundary applied and domain distributed.")
+# After distribute, you can still inspect tags if you want
+if MYID == 0:
+    print("Boundary conditions propagated to parallel subdomains.")
 
-
-# In[37]:
-# Initialize discharge inlet
-inlet_ATC = Inlet_operator(domain, discharge_loc, Q = discharge_function(0))
-# Assign Friction
-#domain.set_quantity('friction', 0.03, location = 'centroids') # Manning N
-
-# In[38]:
-#print interpolated levels
-level_ts
 
 
 # In[39]:
@@ -1062,28 +1057,26 @@ level_ts
 
 # In[40]:
 # Run the model
-import traceback
+# 4) define inlet operator on the PARALLEL domain
+# ----------------------------------------------------------------------
+inlet_ATC = Inlet_operator(domain, discharge_loc, Q=discharge_function(0.0))
 
-# Run the model
+level_ts  # show the interpolated water levels while using in a jupyter notebook
+
+# ----------------------------------------------------------------------
+# 5) Run the model # ----------------------------------------------------------------------
 timestep  = sim_timestep.total_seconds()
 finaltime = (sim_time.shape[0] - 1) * timestep
-total_number_of_steps = sim_time.shape[0]
-
-evolve_iter = domain.evolve(yieldstep=timestep, finaltime=finaltime)
-
-# Only rank 0 gets tqdm, others iterate silently (less MPI spam)
-if myid == 0:
-    from tqdm import tqdm
-    evolve_iter = tqdm(evolve_iter, total=total_number_of_steps)
 
 try:
-    for n, t in enumerate(evolve_iter):
+    for n, t in enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)):
+
         # Update discharge at inlet on ranks that have the operator
         if inlet_ATC is not None:
             inlet_ATC.Q = discharge_function(t)
 
         # Only print/report on master rank
-        if (n % 2 == 0) and (myid == 0):
+        if (n % 2 == 0) and (MYID == 0):
             print(f"\nTime = {t:.2f} s (step {n})")
             domain.report_water_volume_statistics()
 
@@ -1095,7 +1088,7 @@ try:
                 print("Warning: Negative water depths detected.")
 
 except Exception:
-    if myid == 0:
+    if MYID == 0:
         print("\n*** ERROR inside evolve loop ***")
         traceback.print_exc()
     raise
@@ -1110,12 +1103,27 @@ except Exception:
 
 # In[41]:
 
+from anuga import finalize
 import shutil
-# Save output to the dedicated directory
-f_anuga_output_in = os.path.join(workshop_dir, "20140702000000_Shellmouth_flood_12_days.sww")
-f_anuga_output_out = os.path.join(model_outputs_dir, "20140702000000_Shellmouth_flood_12_days.sww")
 
-shutil.copy2(f_anuga_output_in, f_anuga_output_out)
+# --- Merge sww files on process 0 ---
+if myid == 0:
+    print("Merging parallel sww files on rank 0...")
+    # This creates model_name.sww from model_name_P0.sww, _P1, ...
+    domain.sww_merge(delete_old=True)   # delete_old=True removes the P0/P1/etc files
+
+    # Path to merged file (usually in current working directory)
+    merged_sww = domain.get_name() + ".sww"   # e.g. "20140702000000_Shellmouth_flood_12_days.sww"
+
+    # Copy merged file to your dedicated outputs directory
+    f_anuga_output_in  = os.path.join(workshop_dir, merged_sww)
+    f_anuga_output_out = os.path.join(model_outputs_dir, merged_sww)
+
+    print(f"Copying merged sww from:\n  {f_anuga_output_in}\n-> {f_anuga_output_out}")
+    shutil.copy2(f_anuga_output_in, f_anuga_output_out)
+
+# --- Finalize MPI on all ranks ---
+finalize()
 
 # In[ ]:
 

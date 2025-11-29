@@ -1087,7 +1087,7 @@ finaltime = (sim_time.shape[0]-1)*timestep
 total_number_of_steps = sim_time.shape[0]
 for n, t in tqdm(enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)), 
                           total=total_number_of_steps):
-#for n, t in enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)):
+    
     
     # Update discharge value at the inlet
     inlet_ATC.Q = discharge_function(t)

@@ -232,7 +232,6 @@ for d in [model_inputs_dir, model_outputs_dir, model_visuals_dir, model_validati
 #f_py_install = os.path.join(workshop_dir, 'utils/anuga_tools/install.py')
 #get_ipython().system('python $f_py_install')
 
-import subprocess, sys
 #subprocess.check_call([sys.executable, f_py_install])
 
 # Check if the user operating system is windows (useful )

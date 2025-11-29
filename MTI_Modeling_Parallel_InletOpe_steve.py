@@ -66,7 +66,6 @@ if ISROOT:
     f_DEM_tif = os.path.join(data_dir, 'DEM_MTI_PART.tif')
     if 'google.colab' not in sys.modules:
         DEM_src = rio.open(f_DEM_tif)
-        DEM = DEM_src.read(1)
         resolution = DEM_src.res[0]
 
     extent = [DEM_src.bounds.left, DEM_src.bounds.right,

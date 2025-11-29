@@ -11,8 +11,6 @@ import geopandas as gpd
 import anuga
 import os
 import sys
-from tqdm import tqdm
-
 from utils.anuga_tools import anuga_tools as at
 from utils import data_processing_tools as dpt
 

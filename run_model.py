@@ -20,7 +20,6 @@ workshop_dir = os.getcwd()
 data_dir = os.path.join(workshop_dir, 'data')
 model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
 model_visuals_dir = os.path.join(workshop_dir, 'visuals')
-model_validation_dir = os.path.join(workshop_dir, 'validation')
 
 f_DEM_tif = os.path.join(data_dir, 'DEM_MTI_PART.tif')
 mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile

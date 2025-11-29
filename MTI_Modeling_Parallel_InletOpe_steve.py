@@ -122,6 +122,7 @@ if ISROOT:
             try:
                 os.remove(f_edited_DEM_asc)
             except FileNotFoundError:
+                # File already deleted or does not exist; nothing to do
                 pass
 
         with rio.open(f_DEM_tif) as src:

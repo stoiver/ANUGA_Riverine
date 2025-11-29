@@ -244,7 +244,6 @@ is_windows = sys.platform.startswith('win')
 import math
 import fiona
 from shapely.geometry import shape
-import rasterio
 
 mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile
 pts_path  = os.path.join(data_dir, "mesh_mti_shp_pts.npy")

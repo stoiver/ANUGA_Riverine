@@ -154,11 +154,6 @@ if ISROOT:
         )
 
     # All ranks wait until root is done with the file
-    #if NUMPROCS > 1:
-    #    anuga.barrier()
-
-
-
     # In[11]:
 
 

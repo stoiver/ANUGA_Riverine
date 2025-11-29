@@ -495,7 +495,7 @@ if ISROOT:
             bad_nan_inf = ~np.isfinite(arr_float).all(axis=1)
             if bad_nan_inf.any():
                 issues["nan_inf_rows"] = int(bad_nan_inf.sum())
-                arr = arr[~bad_nan_inf]
+                # arr = arr[~bad_nan_inf]  # Unnecessary assignment removed
                 arr_float = arr_float[~bad_nan_inf]
             arr = arr_float.astype(np.int64, copy=False)
 

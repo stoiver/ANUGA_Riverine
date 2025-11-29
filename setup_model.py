@@ -206,7 +206,6 @@ import noaa_coops as noaa
 from tqdm import notebook 
 import matplotlib
 import anuga
-from anuga import Set_stage, Reflective_boundary
 from anuga.structures.inlet_operator import Inlet_operator
 
 #from utils.anuga_tools.baptist_operator import Baptist_operator

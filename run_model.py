@@ -19,7 +19,6 @@ from utils import data_processing_tools as dpt
 workshop_dir = os.getcwd()
 data_dir = os.path.join(workshop_dir, 'data')
 model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
-model_outputs_dir = os.path.join(workshop_dir, 'model_outputs')
 model_visuals_dir = os.path.join(workshop_dir, 'visuals')
 model_validation_dir = os.path.join(workshop_dir, 'validation')
 

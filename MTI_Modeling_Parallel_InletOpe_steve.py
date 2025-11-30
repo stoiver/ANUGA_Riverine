@@ -69,7 +69,6 @@ def finish_plot(path=None, dpi=150):
 
 
 workshop_dir = os.getcwd()
-#workshop_dir = '/path/to/1_HydrodynamicModeling_ANUGA'
 data_dir = os.path.join(workshop_dir, 'data')
 model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
 model_outputs_dir = os.path.join(workshop_dir, 'model_outputs')
@@ -82,13 +81,9 @@ f_US_BC = os.path.join(data_dir, 'ShMouth_US_BC.shp')
 f_DS_BC = os.path.join(data_dir, 'Russel_DS_Boundary.shp')
 
 
-if ISROOT:
+if anuga.myid == 0:
     for d in [model_inputs_dir, model_outputs_dir, model_visuals_dir, model_validation_dir]:
         Path(d).mkdir(parents=True, exist_ok=True)
-            
-
-
-    # In[5]:
 
 
     ## Import the datasets
@@ -101,6 +96,7 @@ if ISROOT:
 
     extent = [DEM_src.bounds.left, DEM_src.bounds.right,
             DEM_src.bounds.bottom, DEM_src.bounds.top]
+
     # Background imagery
     f_bg_img_tif = os.path.join(data_dir, 'Landsat_B6.tif')
     bg_img_src = rio.open(f_bg_img_tif)
@@ -108,8 +104,6 @@ if ISROOT:
     bg_img_extent = [bg_img_src.bounds.left, bg_img_src.bounds.right,
                     bg_img_src.bounds.bottom, bg_img_src.bounds.top]
 
-
-    # In[6]:
 
 
     # Read DEM with mask (nodata auto-masked)
@@ -132,13 +126,9 @@ if ISROOT:
     ax.set_title('DEM (nodata masked)')
     #plt.savefig(os.path.join(model_visuals_dir, 'DEM.png'))
     #plt.show()
-    if ISROOT:  # only rank 0 writes files
-        finish_plot(os.path.join(model_visuals_dir, "DEM.png"))
+    finish_plot(os.path.join(model_visuals_dir, "DEM.png"))
     # sanity check (ignores masked cells)
     print("Range:", np.nanmin(DEM), np.nanmax(DEM), "| nodata:", nd)
-
-
-    # In[7]:
 
 
     # Output .asc file name
@@ -148,48 +138,39 @@ if ISROOT:
     )
 
     # Only rank 0 creates / deletes the ASC
-    if ISROOT:
-        if os.path.exists(f_edited_DEM_asc):
-            try:
-                os.remove(f_edited_DEM_asc)
-            except FileNotFoundError:
-                pass
+    if os.path.exists(f_edited_DEM_asc):
+        try:
+            os.remove(f_edited_DEM_asc)
+        except FileNotFoundError:
+            pass
 
-        with rio.open(f_DEM_tif) as src:
-            arr = src.read(1, masked=True).astype('float32')
-            src_nd = src.nodata
+    with rio.open(f_DEM_tif) as src:
+        arr = src.read(1, masked=True).astype('float32')
+        src_nd = src.nodata
 
-        A = np.ma.filled(arr, fill_value=-9999.0)
-        A[A == -32767] = -9999.0
+    A = np.ma.filled(arr, fill_value=-9999.0)
+    A[A == -32767] = -9999.0
 
-        profile = {
-            "driver": "AAIGrid",
-            "dtype": "float32",
-            "width": A.shape[1],
-            "height": A.shape[0],
-            "count": 1,
-            "crs": src.crs,
-            "transform": src.transform,
-            "nodata": -9999.0,
-        }
+    profile = {
+        "driver": "AAIGrid",
+        "dtype": "float32",
+        "width": A.shape[1],
+        "height": A.shape[0],
+        "count": 1,
+        "crs": src.crs,
+        "transform": src.transform,
+        "nodata": -9999.0,
+    }
 
-        with rio.open(f_edited_DEM_asc, "w", **profile) as dst:
-            dst.write(A, 1)
+    with rio.open(f_edited_DEM_asc, "w", **profile) as dst:
+        dst.write(A, 1)
 
-        print("Wrote:", f_edited_DEM_asc)
-        print(
-            "Min/Max (ignoring -9999):",
-            np.nanmin(np.where(A == -9999, np.nan, A)),
-            np.nanmax(np.where(A == -9999, np.nan, A)),
-        )
-
-    # All ranks wait until root is done with the file
-    #if NUMPROCS > 1:
-    #    anuga.barrier()
-
-
-
-    # In[11]:
+    print("Wrote:", f_edited_DEM_asc)
+    print(
+        "Min/Max (ignoring -9999):",
+        np.nanmin(np.where(A == -9999, np.nan, A)),
+        np.nanmax(np.where(A == -9999, np.nan, A)),
+    )
 
 
     # --- Load upstream boundary line ---
@@ -234,45 +215,14 @@ if ISROOT:
     # Colorbar
     plt.colorbar(im, ax=ax, label='Elevation (m)')
     plt.tight_layout()
-    if ISROOT:  # only rank 0 writes files
-        finish_plot(os.path.join(model_visuals_dir, "DEM_with_BC_Lines.png"))
+    finish_plot(os.path.join(model_visuals_dir, "DEM_with_BC_Lines.png"))
 
     #plt.savefig(os.path.join(model_visuals_dir, 'DEM_with_BC_Lines.png'))
     #plt.show()
 
 
-    # In[12]:
-
-
-
-    #from utils.anuga_tools.baptist_operator import Baptist_operator
-    # Define the path to scripts and data
-    workshop_dir = os.getcwd()
-    # # Alternatively:
-    # workshop_dir = '/path/to/1_HydrodynamicModeling_ANUGA'
-    data_dir = os.path.join(workshop_dir, 'data')
-    model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
-    model_outputs_dir = os.path.join(workshop_dir, 'model_outputs')
-    model_visuals_dir = os.path.join(workshop_dir, 'visuals')
-    model_validation_dir = os.path.join(workshop_dir, 'validation')
-
     for d in [model_inputs_dir, model_outputs_dir, model_visuals_dir, model_validation_dir]:
         Path(d).mkdir(parents=True, exist_ok=True)
-            
-    # Install custom anuga modules
-    #f_py_install = os.path.join(workshop_dir, 'utils/anuga_tools/install.py')
-    #get_ipython().system('python $f_py_install')
-
-    #import subprocess, sys
-    #subprocess.check_call([sys.executable, f_py_install])
-
-    # Check if the user operating system is windows (useful )
-    is_windows = sys.platform.startswith('win')
-
-
-    # In[18]:
-
-
 
 
     mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile
@@ -386,10 +336,6 @@ if ISROOT:
     print(" -", tris_path)
 
 
-    # In[19]:
-
-
-
 
     # ---------- helpers ----------
     def reproject_points_xy(pts_xy: np.ndarray, src_crs, dst_crs):
@@ -487,7 +433,6 @@ if ISROOT:
 
     # From here onward, CRS  of the DEM is used
 
-    # In[20]:
 
     #1) Domain built
     #CHANGING TRIAGLES FROM Clock-Wise TO Counter CW
@@ -569,9 +514,6 @@ if ISROOT:
     assert (tris.min() >= 0) and (tris.max() < len(pts))
 
 
-    # In[21]:
-
-
     # Check current dtypes 
     print("pts:", getattr(pts, "dtype", None), "itemsize:", getattr(getattr(pts,"dtype",None), "itemsize", None))
     print("tris:", getattr(tris, "dtype", None), "itemsize:", getattr(getattr(tris,"dtype",None), "itemsize", None))
@@ -648,16 +590,10 @@ if ISROOT:
     ax.set_title("Interpolated Elevation on Mesh")
     plt.tight_layout()
 
-    if ISROOT:  # only rank 0 writes files
-        finish_plot(os.path.join(model_visuals_dir, "DEM_meshed.png"))
+
+    finish_plot(os.path.join(model_visuals_dir, "DEM_meshed.png"))
     #plt.savefig(os.path.join(model_visuals_dir, "DEM_meshed.png"), bbox_inches="tight")
     #plt.show()
-
-
-    # In[23]:
-
-    # In[24]:
-    # In[25]:
 
     
     with rio.open(f_DEM_tif) as r:        # tiff or asc_dem if you used the ASC
@@ -665,20 +601,12 @@ if ISROOT:
         print("DEM stats:", float(z.min()), float(z.max()))
 
 
-# In[26]:
-#writefile model_settings.py
 # ------------------------------------------------------------------------------
 # Settings
 # ------------------------------------------------------------------------------
 
 
-# Define the path to scripts and data
-workshop_dir = os.getcwd()
-data_dir = os.path.join(workshop_dir, 'data')
-model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
-model_outputs_dir = os.path.join(workshop_dir, 'model_outputs')
-model_visuals_dir = os.path.join(workshop_dir, 'visuals')
-model_validation_dir = os.path.join(workshop_dir, 'validation')
+
 
 
 sim_starttime = pd.Timestamp("2014-07-02 00:00:00", tz="UTC")
@@ -723,7 +651,7 @@ f_level =  os.path.join(model_inputs_dir, 'Level_at_%s_%s-%s.csv' % (
             level_gauge_ID[1],
             data_download_dates[0].replace('-', ''), 
             data_download_dates[1].replace('-', '')))
-# In[27]:
+
 # --- Load boundary-condition CSVs and parse time to UTC ---
 df_q  = pd.read_csv(f_discharge)  # columns expected: time, Q
 df_wl = pd.read_csv(f_level)      # columns expected: time, Level (or similar)
@@ -772,37 +700,37 @@ level_function = at.GenerateTideGauge(
 # Data visualization
 #t = (sim_time-sim_time[0]).astype('timedelta64[s]').astype(float)
 
-delta = sim_time - sim_time[0]
-t = delta.total_seconds().astype(float)
+if anuga.myid == 0:
+    delta = sim_time - sim_time[0]
+    t = delta.total_seconds().astype(float)
 
-discharge_ts = [discharge_function(i) for i in t]
-level_ts = [level_function(i) for i in t]
+    discharge_ts = [discharge_function(i) for i in t]
+    level_ts = [level_function(i) for i in t]
 
-fig, [ax1, ax2] = plt.subplots(2, 1, figsize=(6,4), dpi=100)
-ax1.plot(sim_time, discharge_ts, label=discharge_gauge_ID[1])
-ax1.legend()
-ax1.grid('on')
-ax1.set_ylabel('Discharge [m$^3$/s]')
-ax1.set_xticklabels([])
+    fig, [ax1, ax2] = plt.subplots(2, 1, figsize=(6,4), dpi=100)
+    ax1.plot(sim_time, discharge_ts, label=discharge_gauge_ID[1])
+    ax1.legend()
+    ax1.grid('on')
+    ax1.set_ylabel('Discharge [m$^3$/s]')
+    ax1.set_xticklabels([])
 
-ax2.plot(sim_time, level_ts, label=level_gauge_ID[1])
-ax2.legend()
-ax2.grid('on')
-ax2.set_xlabel('Date [yyyy-mm-dd]')
-ax2.set_ylabel('Water Level [m]')
-for tick in ax2.get_xticklabels():
-    tick.set_rotation(30)
+    ax2.plot(sim_time, level_ts, label=level_gauge_ID[1])
+    ax2.legend()
+    ax2.grid('on')
+    ax2.set_xlabel('Date [yyyy-mm-dd]')
+    ax2.set_ylabel('Water Level [m]')
+    for tick in ax2.get_xticklabels():
+        tick.set_rotation(30)
 
 
-if ISROOT:  # only rank 0 writes files
     finish_plot(os.path.join(model_visuals_dir, "hydrodynamic_inputs.png"))
 #plt.savefig(os.path.join(model_visuals_dir, 'hydrodynamic_inputs.png'))
 #plt.show()
 
 
-    # In[29]:
 
-if ISROOT: # --- Finalize elevation field ---
+
+if anuga.myid == 0: # --- Finalize elevation field ---
     print("Finalizing elevation field...")
     # Fill elevation NaNs if any after DEM interpolation
     elev = domain.get_quantity('elevation').get_values(location='vertices')
@@ -980,8 +908,8 @@ if ISROOT:
 
     # Inspect tags from boundary_map
     existing_tags = sorted(set(boundary_map.values()))
-    if MYID == 0:
-        print("Existing boundary tags on serial domain:", existing_tags)
+
+    print("Existing boundary tags on serial domain:", existing_tags)
 
 
 
@@ -1110,7 +1038,7 @@ if anuga.myid == 0:
 # --- Finalize MPI on all ranks ---
 anuga.finalize()
 
-# In[ ]:
+
 
 
 

@@ -206,8 +206,6 @@ import noaa_coops as noaa
 from tqdm import notebook 
 import matplotlib
 import anuga
-from anuga import Set_stage, Reflective_boundary
-from anuga.structures.inlet_operator import Inlet_operator
 
 #from utils.anuga_tools.baptist_operator import Baptist_operator
 from utils.anuga_tools import anuga_tools as at
@@ -234,7 +232,6 @@ for d in [model_inputs_dir, model_outputs_dir, model_visuals_dir, model_validati
 #f_py_install = os.path.join(workshop_dir, 'utils/anuga_tools/install.py')
 #get_ipython().system('python $f_py_install')
 
-import subprocess, sys
 #subprocess.check_call([sys.executable, f_py_install])
 
 # Check if the user operating system is windows (useful )
@@ -247,7 +244,6 @@ is_windows = sys.platform.startswith('win')
 import math
 import fiona
 from shapely.geometry import shape
-import rasterio
 
 mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile
 pts_path  = os.path.join(data_dir, "mesh_mti_shp_pts.npy")

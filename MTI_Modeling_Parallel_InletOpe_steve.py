@@ -91,7 +91,6 @@ if anuga.myid == 0:
     f_DEM_tif = os.path.join(data_dir, 'DEM_MTI_PART.tif')
     if 'google.colab' not in sys.modules:
         DEM_src = rio.open(f_DEM_tif)
-        DEM = DEM_src.read(1)
         resolution = DEM_src.res[0]
 
     extent = [DEM_src.bounds.left, DEM_src.bounds.right,
@@ -461,7 +460,7 @@ if anuga.myid == 0:
             bad_nan_inf = ~np.isfinite(arr_float).all(axis=1)
             if bad_nan_inf.any():
                 issues["nan_inf_rows"] = int(bad_nan_inf.sum())
-                arr = arr[~bad_nan_inf]
+                # arr = arr[~bad_nan_inf]  # Unnecessary assignment removed
                 arr_float = arr_float[~bad_nan_inf]
             arr = arr_float.astype(np.int64, copy=False)
 

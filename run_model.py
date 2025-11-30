@@ -11,17 +11,13 @@ import geopandas as gpd
 import anuga
 import os
 import sys
-from tqdm import tqdm
-
 from utils.anuga_tools import anuga_tools as at
 from utils import data_processing_tools as dpt
 
 workshop_dir = os.getcwd()
 data_dir = os.path.join(workshop_dir, 'data')
 model_inputs_dir = os.path.join(workshop_dir, 'model_inputs')
-model_outputs_dir = os.path.join(workshop_dir, 'model_outputs')
 model_visuals_dir = os.path.join(workshop_dir, 'visuals')
-model_validation_dir = os.path.join(workshop_dir, 'validation')
 
 f_DEM_tif = os.path.join(data_dir, 'DEM_MTI_PART.tif')
 mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile

@@ -570,12 +570,13 @@ for n, t in enumerate(domain.evolve(yieldstep=timestep, finaltime=finaltime)):
     if anuga.myid == 0 and n % 1 == 0:
         #print(f"\nTime = {t:.2f} s (step {n})")
         domain.print_timestepping_statistics()
-        domain.report_water_volume_statistics()
 
-        # Check for negative depths
-        #shallow = domain.quantities['stage'].centroid_values - domain.quantities['elevation'].centroid_values
-        #if (shallow < 0).any():
-        #    print("Warning: Negative centroid water depths detected.")
+    domain.report_water_volume_statistics()
+
+    # Check for negative depths
+    #shallow = domain.quantities['stage'].centroid_values - domain.quantities['elevation'].centroid_values
+    #if (shallow < 0).any():
+    #    print("Warning: Negative centroid water depths detected.")
 
     # or log to a file for warnings
 

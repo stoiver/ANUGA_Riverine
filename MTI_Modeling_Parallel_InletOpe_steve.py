@@ -2,6 +2,9 @@
 # coding: utf-8
 
 import os
+import sys
+import shutil
+import math
 
 #headless mode before importing pyplot
 HEADLESS = os.environ.get("HEADLESS", "1") == "1" or not os.environ.get("DISPLAY")
@@ -9,24 +12,51 @@ if HEADLESS:
     import matplotlib
     matplotlib.use("Agg")
 
-import sys
+
 import pandas as pd
 import geopandas as gpd
 import rasterio as rio
 import numpy as np
-from scipy import ndimage
+import scipy as sp
+
+
+from dataretrieval import nwis
+import rasterio as rio
+
 import matplotlib.pyplot as plt
-if HEADLESS:
-    plt.show = lambda *a, **kw: None
+import matplotlib.tri as mtri
+import matplotlib
+
+
+from collections import defaultdict
+import traceback
     
 import cmocean
-import shutil
+
 import utm
 from pathlib import Path
 from utils.anuga_tools import anuga_tools as at
 from utils import data_processing_tools as dpt
+
+
+import fiona
+from shapely.geometry import shape
+import rasterio
+import pyproj
+from shapely.geometry import LineString
+from shapely.ops import transform as shp_transform
+import fiona
+import utm
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import transform as shp_transform
+from functools import partial
+
 import anuga
-from anuga import myid
+
+
+if HEADLESS:
+    plt.show = lambda *a, **kw: None
+
 MYID, NUMPROCS = anuga.myid, anuga.numprocs
 ISROOT = (MYID == 0)
 
@@ -87,11 +117,11 @@ if ISROOT:
     nd  = DEM_src.nodata  # e.g., -32767 or -9999
 
     # (Optional) also mask any clearly impossible elevations to be safe
-    import numpy as np
+    
     DEM = np.ma.masked_where((~DEM.mask) & (DEM < 0), DEM)  # adjust threshold to your region
 
     # Nice plotting: masked cells transparent
-    import cmocean
+   
     cmap = cmocean.cm.topo.copy()
     cmap.set_bad(alpha=0.0)
 
@@ -214,15 +244,7 @@ if ISROOT:
     # In[12]:
 
 
-    from dataretrieval import nwis
-    import matplotlib
-    #import anuga
-    #from anuga import Set_stage, Reflective_boundary
-    #from anuga import Inlet_operator
-    #from anuga.structures.inlet_operator import Inlet_operator
 
-    from utils.anuga_tools import anuga_tools as at
-    from utils import data_processing_tools as dpt
     #from utils.anuga_tools.baptist_operator import Baptist_operator
     # Define the path to scripts and data
     workshop_dir = os.getcwd()
@@ -251,10 +273,7 @@ if ISROOT:
     # In[18]:
 
 
-    import math
-    import fiona
-    from shapely.geometry import shape
-    import rasterio
+
 
     mesh_tri_shp = os.path.join(data_dir, "DEM_MTI_PART_USM.shp")  # your mesh triangles shapefile
     pts_path  = os.path.join(data_dir, "mesh_mti_shp_pts.npy")
@@ -370,11 +389,7 @@ if ISROOT:
     # In[19]:
 
 
-    import pyproj
-    from shapely.geometry import LineString
-    from shapely.ops import transform as shp_transform
-    import fiona
-    import matplotlib.tri as mtri
+
 
     # ---------- helpers ----------
     def reproject_points_xy(pts_xy: np.ndarray, src_crs, dst_crs):
@@ -583,20 +598,11 @@ if ISROOT:
         tris[flip, 1], tris[flip, 2] = tris[flip, 2].copy(), tris[flip, 1].copy()
 
     # --- 3) Build domain safely
-    #from anuga import Reflective_boundary
-    #from anuga.shallow_water.boundaries import Reflective_boundary
     domain = anuga.Domain(coordinates=pts, vertices=tris, verbose=False)
 
-
-    # In[22]:
-
-
-    import os
-    import numpy as np
-
-    import matplotlib.pyplot as plt
-    import matplotlib.tri as mtri
-    #import anuga
+    print("Domain created:")
+    print(" - Number of nodes:", domain.number_of_nodes)
+    print(" - Number of triangles:", domain.number_of_elements)
 
     # 1) domain is built from pts, tris
     # 2) DEM Sampling at vertex coords for ANUGA ---
@@ -653,7 +659,7 @@ if ISROOT:
     # In[24]:
     # In[25]:
 
-    import rasterio as rio, numpy as np
+    
     with rio.open(f_DEM_tif) as r:        # tiff or asc_dem if you used the ASC
         z = r.read(1, masked=True)
         print("DEM stats:", float(z.min()), float(z.max()))
@@ -664,11 +670,7 @@ if ISROOT:
 # ------------------------------------------------------------------------------
 # Settings
 # ------------------------------------------------------------------------------
-import pandas as pd
-import numpy as np
-import os
-import utm
-import sys
+
 
 # Define the path to scripts and data
 workshop_dir = os.getcwd()
@@ -817,10 +819,7 @@ discharge_loc = np.asarray(discharge_transect_gdf.geometry[0].xy).T.tolist()
 
 if ISROOT:
     # In[34]:
-    from shapely.geometry import LineString, Point, Polygon
-    from shapely.ops import transform as shp_transform
-    from functools import partial
-    import pyproj
+
 
     # -------------------- CONFIG --------------------
     MESH_CRS_EPSG = 26914
@@ -969,14 +968,6 @@ if ISROOT:
                 )
 
 
-    # In[35]:
-
-    # In[36]:
-    from collections import defaultdict
-    import traceback
-    #import anuga
-    #from anuga import distribute, myid, numprocs
-
     MYID, NUMPROCS = anuga.myid, anuga.numprocs
 
     # ----------------------------------------------------------------------
@@ -1034,7 +1025,7 @@ Bc = {}
 # Outlet: static transmissive
 boundary_tags = domain.get_boundary_tags()
 
-print("Boundary tags on this rank:", myid,boundary_tags)
+print("Boundary tags on this rank:", anuga.myid,boundary_tags)
 
 # Outlet: transmissive, zero momentum
 if 'outlet' in boundary_tags:
@@ -1051,34 +1042,8 @@ if 'exterior' in boundary_tags:
 # IMPORTANT: bind ALL tags here on the serial domain
 domain.set_boundary(Bc)
 
-# In[39]:
 
-# allowed_tags = sorted(set(domain.boundary.values()))
-# print("Allowed tags for this domain:", allowed_tags)
-
-# Bc = {}
-
-# # Outlet: time-varying stage, zero momentum
-# def stage_func(t):
-#     return float(level_function(t))  
-# try:
-#     outlet_bc = anuga.shallow_water.boundaries.Time_stage_zero_momentum_boundary(domain, stage_func)
-# except AttributeError:
-#     outlet_bc = anuga.shallow_water.boundaries.Time_stage_zero_momentum_boundary(domain, function=stage_func)
-
-# # exterior are reflective
-# from anuga.shallow_water.boundaries import Reflective_boundary
-# exterior_bc = Reflective_boundary(domain)
-
-# if 'outlet' in allowed_tags:
-#     Bc['outlet'] = outlet_bc
-# if 'exterior' in allowed_tags:
-#     Bc['exterior'] = exterior_bc
-
-# domain.set_boundary(Bc)
-
-
-# In[40]:
+# ----------------------------------------------------------------------
 # Run the model
 # 4) define inlet operator on the PARALLEL domain
 # ----------------------------------------------------------------------
@@ -1124,26 +1089,14 @@ except Exception:
         print("\n*** ERROR inside evolve loop ***")
         traceback.print_exc()
     raise
-
-
-
     # or log to a file for warnings
 
+print("Merging parallel sww files...")
+# This creates model_name.sww from model_name_P0.sww, _P1, ...
+domain.sww_merge(delete_old=True)   # delete_old=True removes the P0/P1/etc files
 
-# In[42]:
-
-
-# In[41]:
-
-from anuga import finalize
-import shutil
-
-# --- Merge sww files on process 0 ---
-if myid == 0:
-    print("Merging parallel sww files on rank 0...")
-    # This creates model_name.sww from model_name_P0.sww, _P1, ...
-    domain.sww_merge(delete_old=True)   # delete_old=True removes the P0/P1/etc files
-
+# --- Copy merged sww file to model_outputs_dir ---
+if anuga.myid == 0:
     # Path to merged file (usually in current working directory)
     merged_sww = domain.get_name() + ".sww"   # e.g. "20140702000000_Shellmouth_flood_12_days.sww"
 
@@ -1155,7 +1108,7 @@ if myid == 0:
     shutil.copy2(f_anuga_output_in, f_anuga_output_out)
 
 # --- Finalize MPI on all ranks ---
-finalize()
+anuga.finalize()
 
 # In[ ]:
 

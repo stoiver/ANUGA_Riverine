@@ -545,6 +545,8 @@ if anuga.myid == 0:
     print(" - Number of nodes:", domain.number_of_nodes)
     print(" - Number of triangles:", domain.number_of_elements)
 
+    print(domain.statistics())
+
     # 1) domain is built from pts, tris
     # 2) DEM Sampling at vertex coords for ANUGA ---
 
